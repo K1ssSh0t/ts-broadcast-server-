@@ -25,7 +25,7 @@ program
   .option(
     "-u, --url <url>",
     "WebSocket server URL",
-    `ws://localhost:${DEFAULT_PORT}`
+    `ws://127.0.0.1:${DEFAULT_PORT}/ws`
   )
   .action((options) => {
     startClient(options.url);
