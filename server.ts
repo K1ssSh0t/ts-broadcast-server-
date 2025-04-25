@@ -7,15 +7,15 @@ const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket>();
 
 const app = new Hono();
 
-const clients = new Set<WSContext<ServerWebSocket>>(); // Cambiar Set a Map
+const clients = new Map<string, WSContext<ServerWebSocket>>(); // Cambiar Set a Map
 
 const wsApp = app.get(
   "/ws",
   upgradeWebSocket((c) => {
     return {
       onOpen(event, ws) {
-        clients.add(ws); // Asociar el identificador con el cliente
-        //console.log(ws);
+        const clientId = crypto.randomUUID(); // Generar un identificador único para el cliente
+        clients.set(clientId, ws); // Asociar el identificador con el cliente
         console.log(`🟢 New client connected. Total clients: ${clients.size}`);
       },
       onMessage(event, ws) {
@@ -27,9 +27,12 @@ const wsApp = app.get(
         });
       },
       onClose(event, ws) {
-        //console.log(ws);
-        clients.delete(ws); // Eliminar el cliente de la lista
-        // Enviar un mensaje a todos los clientes
+        const clientId = [...clients.entries()].find(
+          ([, client]) => client === ws
+        )?.[0]; // Encontrar el identificador del cliente
+        if (clientId) {
+          clients.delete(clientId); // Eliminar el cliente de la lista
+        }
         console.log(`🔴 Client disconnected. Total clients: ${clients.size}`);
       },
       onError(event, ws) {
