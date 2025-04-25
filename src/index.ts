@@ -1,6 +1,6 @@
 import { Command } from "commander";
-import { startServer } from "./server";
-import { startClient } from "./client";
+import { startServer } from "./server.ts";
+import { startClient } from "./client.ts";
 
 const program = new Command();
 const DEFAULT_PORT = 3000;
@@ -14,15 +14,15 @@ program
   .command("start")
   .description("Start the broadcast server")
   .option("-p, --port <port>", "Port to listen on", String(DEFAULT_PORT))
-  .action((options) => {
+  .action(async (options) => {
     const port = parseInt(options.port, 10) || DEFAULT_PORT;
-    startServer(port);
+    await startServer(port);
   });
 
 program
   .command("client")
   .description("Connect to the broadcast server as a client")
-  .option("-u, --url <url>", "WebSocket server URL", `ws://localhost:3001/ws`)
+  .option("-u, --url <url>", "WebSocket server URL", `ws://localhost:3000/`)
   .action((options) => {
     startClient(options.url);
   });

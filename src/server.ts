@@ -1,43 +1,64 @@
-import { Hono } from "hono";
-import { logger } from "hono/logger";
-import { serve } from "@hono/node-server";
-import { WebSocketServer, WebSocket } from "ws";
+import Fastify from "fastify";
+import websocket from "@fastify/websocket";
+// Import WebSocket type from the 'ws' library
+import { WebSocket } from "ws";
 
-const DEFAULT_PORT = 3000;
-const WS_PORT = 3001;
+export async function startServer(port: number) {
+  const fastify = Fastify();
+  await fastify.register(websocket);
 
-export function startServer(
-  port: number = DEFAULT_PORT,
-  wsPort: number = WS_PORT
-) {
-  const app = new Hono();
-  app.use(logger());
-  app.get("/", (c) => c.text("Broadcast server running"));
-
-  // Start HTTP server with Hono
-  serve({ fetch: app.fetch, port });
-  console.log(`🚀 HTTP server listening at: http://localhost:${port}`);
-
-  // Start WebSocket server on a different port
-  const wss = new WebSocketServer({ port: wsPort });
+  // Use WebSocket as the type for the Set
   const clients = new Set<WebSocket>();
 
-  wss.on("connection", (ws) => {
-    clients.add(ws);
-    console.log(`🟢 New client connected. Total clients: ${clients.size}`);
-    ws.on("message", (message) => {
-      console.log(`📨 Broadcasting message: ${message}`);
-      for (const client of clients) {
-        if (client.readyState === WebSocket.OPEN && client !== ws) {
-          client.send(message);
-        }
-      }
-    });
-    ws.on("close", () => {
-      clients.delete(ws);
-      console.log(`🔴 Client disconnected. Total clients: ${clients.size}`);
-    });
-  });
+  // The 'socket' parameter in wsHandler is compatible with ws.WebSocket
+  fastify.get(
+    "/",
+    { websocket: true },
+    function wsHandler(socket /* type is inferred or compatible */, req) {
+      console.log("*** wsHandler invoked for a new connection ***");
 
-  console.log(`🌐 WebSocket server listening at: ws://localhost:${wsPort}`);
+      // Add client immediately when handler is invoked
+      clients.add(socket);
+      console.log("+++ Client added to Set +++");
+      console.log(`🟢 New client connected. Total clients: ${clients.size}`);
+
+      // Keep the open listener just for logging, to see if it ever fires
+      socket.on("open", () => {
+        console.log(">>> OPEN event triggered (for observation) <<<");
+      });
+
+      socket.on("message", (message) => {
+        console.log(`📨 Broadcasting message: ${message.toString()}`);
+        // Broadcast to all *other* connected clients in the shared Set
+        clients.forEach((client) => {
+          // Check if the client is still open before sending
+          if (client !== socket && client.readyState === WebSocket.OPEN) {
+            // Use WebSocket.OPEN
+            client.send(message.toString());
+          }
+        });
+      });
+
+      socket.on("close", () => {
+        clients.delete(socket); // Delete from the shared Set
+        console.log(`🔴 Client disconnected. Total clients: ${clients.size}`);
+      });
+
+      socket.on("error", (error) => {
+        console.error("WebSocket error:", error);
+        clients.delete(socket); // Remove from shared Set on error
+        console.log(
+          `🔴 Client disconnected after error. Total clients: ${clients.size}`
+        );
+      });
+    }
+  );
+
+  try {
+    await fastify.listen({ port });
+    console.log(`🚀 Server listening on port ${port}`);
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
 }
