@@ -28,7 +28,7 @@ export function startServer(
     ws.on("message", (message) => {
       console.log(`📨 Broadcasting message: ${message}`);
       for (const client of clients) {
-        if (client.readyState === WebSocket.OPEN) {
+        if (client.readyState === WebSocket.OPEN && client !== ws) {
           client.send(message);
         }
       }
