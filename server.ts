@@ -9,7 +9,7 @@ const app = new Hono();
 
 const clients = new Set<WSContext<ServerWebSocket>>(); // Cambiar Set a Map
 
-app.get(
+const wsApp = app.get(
   "/ws",
   upgradeWebSocket((c) => {
     return {
@@ -42,8 +42,10 @@ app.get(
 export function startServer(port: number) {
   console.log(`🌐  Starting server on port ${port}...`);
   Bun.serve({
-    fetch: app.fetch,
+    fetch: wsApp.fetch,
     websocket,
     port,
   });
 }
+
+export type websocketApp = typeof wsApp;
