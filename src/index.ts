@@ -22,11 +22,7 @@ program
 program
   .command("client")
   .description("Connect to the broadcast server as a client")
-  .option(
-    "-u, --url <url>",
-    "WebSocket server URL",
-    `ws://localhost:${DEFAULT_PORT}`
-  )
+  .option("-u, --url <url>", "WebSocket server URL", `ws://localhost:3001/ws`)
   .action((options) => {
     startClient(options.url);
   });
